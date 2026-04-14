@@ -1,0 +1,102 @@
+[
+  {
+    "id": 1,
+    "nama": "GBI Bethel Sion",
+    "provinsi": "DKI Jakarta",
+    "alamat": "Jl. Sam Ratulangi No. 12, Jakarta Pusat",
+    "gembala": "Pdt. Andreas Wijaya",
+    "telepon": "021-555001",
+    "latitude": -6.187483,
+    "longitude": 106.820114
+  },
+  {
+    "id": 2,
+    "nama": "GBI Kemuliaan Kasih",
+    "provinsi": "Jawa Barat",
+    "alamat": "Jl. Braga No. 55, Bandung",
+    "gembala": "Pdt. Samuel Halim",
+    "telepon": "022-555002",
+    "latitude": -6.917495,
+    "longitude": 107.619125
+  },
+  {
+    "id": 3,
+    "nama": "GBI Shalom Damai",
+    "provinsi": "Jawa Tengah",
+    "alamat": "Jl. Pandanaran No. 23, Semarang",
+    "gembala": "Pdt. Yohanes Kurnia",
+    "telepon": "024-555003",
+    "latitude": -6.992352,
+    "longitude": 110.420288
+  },
+  {
+    "id": 4,
+    "nama": "GBI Sumber Berkat",
+    "provinsi": "Jawa Timur",
+    "alamat": "Jl. Basuki Rahmat No. 74, Surabaya",
+    "gembala": "Pdt. Daniel Hartono",
+    "telepon": "031-555004",
+    "latitude": -7.257472,
+    "longitude": 112.75209
+  },
+  {
+    "id": 5,
+    "nama": "GBI Gloria Nusantara",
+    "provinsi": "Sulawesi Selatan",
+    "alamat": "Jl. Penghibur No. 11, Makassar",
+    "gembala": "Pdt. Ruben Simanjuntak",
+    "telepon": "0411-555005",
+    "latitude": -5.147665,
+    "longitude": 119.432732
+  },
+  {
+    "id": 6,
+    "nama": "GBI Rock Jayapura",
+    "provinsi": "Papua",
+    "alamat": "Jl. Kelapa Dua, Entrop, Distrik Jayapura Selatan, Kota Jayapura",
+    "gembala": "-",
+    "telepon": "-",
+    "latitude": -2.5867,
+    "longitude": 140.6634
+  },
+  {
+    "id": 7,
+    "nama": "GBI Dock 4 (Bucend VII)",
+    "provinsi": "Papua",
+    "alamat": "Jl. Rumsram Bucend VII, Entrop, Distrik Jayapura Selatan, Kota Jayapura",
+    "gembala": "-",
+    "telepon": "-",
+    "latitude": -2.5889,
+    "longitude": 140.6668
+  },
+  {
+    "id": 8,
+    "nama": "GBI Blessing Papua Ministry (BPM)",
+    "provinsi": "Papua",
+    "alamat": "Ardipura, Distrik Jayapura Selatan, Kota Jayapura",
+    "gembala": "-",
+    "telepon": "-",
+    "latitude": -2.5938,
+    "longitude": 140.6699
+  },
+  {
+    "id": 9,
+    "nama": "GBI Rock Sentani",
+    "provinsi": "Papua",
+    "alamat": "Sentani Kota, Kec. Sentani, Kabupaten Jayapura",
+    "gembala": "-",
+    "telepon": "-",
+    "latitude": -2.5683,
+    "longitude": 140.5124
+  },
+  {
+    "id": 10,
+    "nama": "GBI Kristus Gembala",
+    "provinsi": "Papua",
+    "alamat": "Kota Baru, Kec. Abepura, Kota Jayapura",
+    "gembala": "-",
+    "telepon": "-",
+    "latitude": -2.6207,
+    "longitude": 140.6705
+  }
+]

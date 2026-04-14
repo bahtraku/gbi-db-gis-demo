@@ -1,0 +1,1149 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Basis Data GBI (Gereja Bethel Indonesia)</title>
+  <link rel="icon" type="image/png" href="./images/gbi-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            gbiGold: '#c7a32b',
+            gbiBlue: '#1e3a8a'
+          },
+          fontFamily: {
+            jakarta: ['Plus Jakarta Sans', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    [x-cloak] {
+      display: none !important;
+    }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #f8fafc;
+      background-image: linear-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+    .leaflet-container {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .alert-success {
+      border-color: #86efac;
+      background-color: #f0fdf4;
+      color: #166534;
+    }
+    .alert-danger {
+      border-color: #fca5a5;
+      background-color: #fef2f2;
+      color: #991b1b;
+    }
+    .alert-warning {
+      border-color: #fcd34d;
+      background-color: #fffbeb;
+      color: #92400e;
+    }
+    .alert-info {
+      border-color: #93c5fd;
+      background-color: #eff6ff;
+      color: #1e3a8a;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-800">
+  <div x-data="gbiApp()" x-init="init()" class="min-h-screen" x-cloak>
+    <div class="fixed right-4 top-4 z-[9999] w-[92vw] max-w-sm" x-show="alert.show" x-transition.opacity.duration.300ms>
+      <div class="rounded-xl border px-4 py-3 text-sm shadow-lg" :class="alertClass()">
+        <div class="flex items-start justify-between gap-3">
+          <p x-text="alert.message"></p>
+          <button type="button" class="text-xs font-semibold" @click="alert.show = false">Tutup</button>
+        </div>
+      </div>
+    </div>
+
+    <template x-if="!isAuthenticated">
+      <section class="flex min-h-screen items-center justify-center px-4 py-8">
+        <div class="grid w-full max-w-6xl gap-4 lg:grid-cols-2">
+          <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:p-8">
+            <div class="mb-5">
+              <p class="mb-2 inline-flex items-center rounded-full bg-gbiGold/10 px-3 py-1 text-xs font-semibold text-gbiGold">Akses Admin GBI</p>
+              <h1 class="text-2xl font-extrabold text-gbiBlue">Basis Data GBI</h1>
+              <p class="mt-1 text-sm text-slate-500">Masuk untuk mengelola data gereja dan titik GIS.</p>
+              <div x-show="authPage === 'utama'" class="mt-4 grid grid-cols-2 gap-2 rounded-lg border border-slate-200 bg-slate-50 p-1">
+                <button type="button" @click="authTab = 'masuk'" class="rounded-md px-3 py-2 text-sm font-semibold transition" :class="authTab === 'masuk' ? 'bg-gbiBlue text-white shadow-sm' : 'text-slate-600 hover:bg-white'">Masuk</button>
+                <button type="button" @click="authTab = 'daftar'" class="rounded-md px-3 py-2 text-sm font-semibold transition" :class="authTab === 'daftar' ? 'bg-gbiBlue text-white shadow-sm' : 'text-slate-600 hover:bg-white'">Pendaftaran</button>
+              </div>
+            </div>
+
+            <div x-show="authPage !== 'utama'" class="mb-4">
+              <button type="button" @click="kembaliKeAutentikasiUtama()" class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">
+                <i class="fa-solid fa-arrow-left"></i>
+                Kembali ke halaman masuk
+              </button>
+            </div>
+
+            <form x-show="authPage === 'utama' && authTab === 'masuk'" class="space-y-4" @submit.prevent="login">
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-600">Nama Pengguna</label>
+                <input x-model.trim="loginForm.username" type="text" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20" placeholder="Masukkan nama pengguna">
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-600">Kata Sandi</label>
+                <input x-model="loginForm.password" type="password" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20" placeholder="Masukkan kata sandi">
+              </div>
+              <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gbiBlue px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800">
+                <i class="fa-solid fa-right-to-bracket"></i>
+                Masuk
+              </button>
+              <div class="flex items-center gap-3 pt-1 text-xs text-slate-400">
+                <span class="h-px flex-1 bg-slate-200"></span>
+                <span>atau pilih metode masuk lain</span>
+                <span class="h-px flex-1 bg-slate-200"></span>
+              </div>
+              <div class="grid gap-2">
+                <button type="button" @click="bukaHalamanSimulasiGoogle()" class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                  <i class="fa-brands fa-google text-red-500"></i>
+                  Masuk dengan Google (Simulasi)
+                </button>
+                <button type="button" @click="bukaHalamanAutentikasiDuaLangkah()" class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                  <i class="fa-solid fa-shield-halved text-gbiBlue"></i>
+                  Masuk dengan Autentikasi 2 Langkah (Simulasi)
+                </button>
+              </div>
+            </form>
+
+            <form x-show="authPage === 'utama' && authTab === 'daftar'" class="space-y-3" @submit.prevent="daftarAkun()">
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-600">Nama Lengkap</label>
+                <input x-model.trim="registrationForm.namaLengkap" type="text" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20" placeholder="Masukkan nama lengkap" required>
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-600">Email</label>
+                <input x-model.trim="registrationForm.email" type="email" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20" placeholder="Masukkan email aktif" required>
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-600">Nomor WhatsApp</label>
+                <input x-model.trim="registrationForm.telepon" type="text" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20" placeholder="Contoh: 08123456789" required>
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-600">Kata Sandi</label>
+                <input x-model="registrationForm.kataSandi" type="password" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20" placeholder="Masukkan kata sandi" required>
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-600">Konfirmasi Kata Sandi</label>
+                <input x-model="registrationForm.konfirmasiKataSandi" type="password" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20" placeholder="Ulangi kata sandi" required>
+              </div>
+              <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gbiBlue px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800">
+                <i class="fa-solid fa-user-plus"></i>
+                Daftar (Simulasi)
+              </button>
+            </form>
+
+            <section x-show="authPage === 'google'" class="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div>
+                <h3 class="text-sm font-bold text-gbiBlue">Halaman Simulasi Login Google</h3>
+                <p class="mt-1 text-xs text-slate-600">Pilih akun Google simulasi untuk melanjutkan proses masuk.</p>
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-600">Akun Google</label>
+                <select x-model="googleSimulasi.akunDipilih" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20">
+                  <option value="">-- Pilih akun Google --</option>
+                  <option value="admin.gbi@gmail.com">admin.gbi@gmail.com</option>
+                  <option value="operator.gbi@gmail.com">operator.gbi@gmail.com</option>
+                  <option value="pelayanan.gbi@gmail.com">pelayanan.gbi@gmail.com</option>
+                </select>
+              </div>
+              <button type="button" @click="prosesGoogleSimulasi()" class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gbiBlue px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800">
+                <i class="fa-brands fa-google"></i>
+                Lanjutkan Masuk Google
+              </button>
+            </section>
+
+            <section x-show="authPage === 'duaLangkah'" class="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div class="flex items-center justify-between gap-2">
+                <div>
+                  <h3 class="text-sm font-bold text-gbiBlue">Halaman Simulasi Autentikasi 2 Langkah</h3>
+                  <p class="mt-1 text-xs text-slate-600">Lengkapi langkah pertama, lalu verifikasi kode pada langkah kedua.</p>
+                </div>
+                <span class="rounded-lg border border-gbiGold/40 bg-gbiGold/10 px-2.5 py-1 text-xs font-semibold text-gbiBlue">
+                  Langkah <span x-text="duaLangkah.step"></span>/2
+                </span>
+              </div>
+
+              <div x-show="duaLangkah.step === 1" class="space-y-3">
+                <div>
+                  <label class="mb-1 block text-sm font-medium text-slate-600">Email</label>
+                  <input x-model.trim="duaLangkah.email" type="email" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20" placeholder="Masukkan email">
+                </div>
+                <div>
+                  <label class="mb-1 block text-sm font-medium text-slate-600">Kata Sandi</label>
+                  <input x-model="duaLangkah.password" type="password" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20" placeholder="Masukkan kata sandi">
+                </div>
+                <button type="button" @click="lanjutkanLangkahPertamaDuaLangkah()" class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gbiBlue px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800">
+                  <i class="fa-solid fa-arrow-right"></i>
+                  Lanjut ke Verifikasi Kode
+                </button>
+              </div>
+
+              <div x-show="duaLangkah.step === 2" class="space-y-3">
+                <div class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                  Kode verifikasi simulasi: <span class="font-bold" x-text="kodeDuaLangkahDemo"></span>
+                </div>
+                <div>
+                  <label class="mb-1 block text-sm font-medium text-slate-600">Kode Verifikasi</label>
+                  <input x-model="duaLangkah.kode" type="text" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20" placeholder="Masukkan kode verifikasi">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <button type="button" @click="kembaliKeLangkahPertamaDuaLangkah()" class="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    Kembali
+                  </button>
+                  <button type="button" @click="verifikasiAutentikasiDuaLangkah()" class="inline-flex items-center justify-center gap-2 rounded-lg bg-gbiBlue px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-800">
+                    <i class="fa-solid fa-circle-check"></i>
+                    Verifikasi
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+          <div class="relative overflow-hidden rounded-2xl border border-gbiGold/30 bg-gradient-to-br from-white via-blue-50 to-gbiGold/15 p-6 shadow-sm lg:p-8">
+            <div class="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-gbiGold/20 blur-2xl"></div>
+            <div class="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-gbiBlue/20 blur-2xl"></div>
+            <div class="relative flex h-full flex-col items-center justify-center text-center">
+              <img src="./images/gbi-logo.png" alt="Logo Gereja Bethel Indonesia" class="h-32 w-32 object-contain drop-shadow-sm lg:h-40 lg:w-40">
+              <h2 class="mt-5 text-2xl font-extrabold text-gbiBlue lg:text-3xl">Gereja Bethel Indonesia</h2>
+              <p class="mt-2 max-w-md text-sm leading-relaxed text-slate-600">
+                Platform administrasi data gereja terintegrasi dengan pemetaan GIS untuk mendukung pelayanan yang lebih efektif.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </template>
+
+    <template x-if="isAuthenticated">
+      <div class="min-h-screen">
+        <header class="sticky top-0 z-[1200] border-b border-slate-200 bg-white/95 backdrop-blur">
+          <div class="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-3">
+              <img src="./images/gbi-logo.png" alt="Logo GBI" class="h-10 w-10 rounded-full border border-gbiGold/40 bg-white p-1 object-contain shadow-sm">
+              <div>
+                <h2 class="text-lg font-extrabold text-gbiBlue">Basis Data GBI (Gereja Bethel Indonesia)</h2>
+                <p class="text-xs text-slate-500">Sistem informasi gereja berbasis web, data master, dan GIS.</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" @click="changePage('dashboard')" class="rounded-lg px-3 py-2 text-sm font-semibold transition" :class="activePage === 'dashboard' ? 'bg-gbiBlue text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'">Dashboard</button>
+              <button type="button" @click="changePage('data')" class="rounded-lg px-3 py-2 text-sm font-semibold transition" :class="activePage === 'data' ? 'bg-gbiBlue text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'">Data Gereja</button>
+              <button type="button" @click="changePage('gis')" class="rounded-lg px-3 py-2 text-sm font-semibold transition" :class="activePage === 'gis' ? 'bg-gbiBlue text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'">GIS</button>
+              <div class="relative" @click.outside="userMenuOpen = false">
+                <button type="button" @click="userMenuOpen = !userMenuOpen" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                  <img src="./images/user-avatar.svg" alt="Avatar pengguna" class="h-8 w-8 rounded-full border border-slate-200 object-cover">
+                  <span class="hidden sm:block" x-text="userFullName"></span>
+                  <i class="fa-solid fa-chevron-down text-xs text-slate-400 transition" :class="userMenuOpen ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="userMenuOpen" x-transition.origin.top.right x-cloak class="absolute right-0 z-[1300] mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                  <div class="border-b border-slate-100 px-3 py-2">
+                    <p class="text-xs text-slate-500">Nama Lengkap</p>
+                    <p class="text-sm font-semibold text-slate-700" x-text="userFullName"></p>
+                  </div>
+                  <button type="button" @click="logout(); userMenuOpen = false" class="inline-flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-red-600 transition hover:bg-red-50">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    Keluar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main class="mx-auto w-full max-w-7xl px-4 py-6">
+          <section x-show="activePage === 'dashboard'" class="space-y-4">
+            <div class="grid gap-4 sm:grid-cols-3">
+              <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p class="text-xs font-semibold text-slate-500">Total Gereja</p>
+                <h3 class="mt-2 text-2xl font-extrabold text-gbiBlue" x-text="churches.length"></h3>
+              </div>
+              <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p class="text-xs font-semibold text-slate-500">Sudah Memiliki Koordinat</p>
+                <h3 class="mt-2 text-2xl font-extrabold text-gbiBlue" x-text="churchesWithCoordinatesCount"></h3>
+              </div>
+              <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p class="text-xs font-semibold text-slate-500">Belum Memiliki Koordinat</p>
+                <h3 class="mt-2 text-2xl font-extrabold text-gbiBlue" x-text="churchesWithoutCoordinatesCount"></h3>
+              </div>
+            </div>
+            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                <div>
+                  <h3 class="text-sm font-bold text-gbiBlue">Peta GIS Data Gereja</h3>
+                  <p class="text-xs text-slate-500">Menampilkan titik gereja yang sudah memiliki koordinat.</p>
+                </div>
+                <button type="button" @click="changePage('gis')" class="inline-flex items-center gap-2 rounded-lg border border-gbiGold/40 bg-gbiGold/10 px-3 py-2 text-xs font-semibold text-gbiBlue transition hover:bg-gbiGold/20">
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                  Buka Halaman GIS
+                </button>
+              </div>
+              <div
+                x-ref="dashboardMap"
+                x-init="$nextTick(() => { initDashboardMap(); if (dashboardMap) { dashboardMap.invalidateSize(); } renderDashboardMarkers(); })"
+                class="h-[420px] w-full"
+              ></div>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 class="text-sm font-bold text-gbiBlue">Total Data Gereja per Provinsi</h3>
+                  <p class="text-xs text-slate-500">Ringkasan data gereja berdasarkan seluruh provinsi.</p>
+                </div>
+                <span class="rounded-lg border border-gbiGold/40 bg-gbiGold/10 px-3 py-1 text-xs font-semibold text-gbiBlue">
+                  Total Provinsi: <span x-text="provinceStats.length"></span>
+                </span>
+              </div>
+              <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-12">
+                <template x-for="item in provinceStats" :key="item.provinsi">
+                  <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 xl:col-span-3">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500" x-text="item.provinsi"></p>
+                    <p class="mt-1 text-2xl font-extrabold text-gbiBlue" x-text="item.total"></p>
+                    <p class="text-xs text-slate-500">gereja</p>
+                  </div>
+                </template>
+                <div x-show="provinceStats.length === 0" class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500 xl:col-span-12">
+                  Belum ada data provinsi.
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section x-show="activePage === 'data'" class="space-y-4">
+            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <h3 class="text-base font-bold text-gbiBlue">Tabel Data Gereja</h3>
+                <div class="flex flex-wrap items-center gap-2">
+                  <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+                    <input x-model.trim="search" @input="page = 1" type="text" placeholder="Cari nama, alamat, provinsi, gembala..." class="w-72 rounded-lg border border-slate-300 py-2 pl-8 pr-3 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20">
+                  </div>
+                  <button type="button" @click="openCreateModal()" class="inline-flex items-center gap-2 rounded-lg bg-gbiBlue px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-800">
+                    <i class="fa-solid fa-plus"></i>
+                    Tambah
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                  <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th class="px-4 py-3">No</th>
+                      <th class="px-4 py-3">Nama Gereja</th>
+                      <th class="px-4 py-3">Alamat</th>
+                      <th class="px-4 py-3">Provinsi</th>
+                      <th class="px-4 py-3">Gembala</th>
+                      <th class="px-4 py-3">Telepon</th>
+                      <th class="px-4 py-3">Koordinat</th>
+                      <th class="px-4 py-3">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="(church, index) in paginatedChurches" :key="church.id">
+                      <tr class="border-t border-slate-100">
+                        <td class="px-4 py-3 text-slate-500" x-text="(page - 1) * perPage + index + 1"></td>
+                        <td class="px-4 py-3">
+                          <p class="font-semibold text-slate-700" x-text="church.nama"></p>
+                        </td>
+                        <td class="px-4 py-3 text-slate-600" x-text="church.alamat"></td>
+                        <td class="px-4 py-3 text-slate-600" x-text="church.provinsi"></td>
+                        <td class="px-4 py-3 text-slate-600" x-text="church.gembala"></td>
+                        <td class="px-4 py-3 text-slate-600" x-text="church.telepon"></td>
+                        <td class="px-4 py-3 text-xs text-slate-600" x-text="formatCoordinate(church)"></td>
+                        <td class="px-4 py-3">
+                          <div class="flex items-center gap-2">
+                            <button type="button" @click="openEditModal(church)" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-amber-300 bg-amber-50 text-amber-700 transition hover:bg-amber-100" title="Edit">
+                              <i class="fa-solid fa-pen text-xs"></i>
+                            </button>
+                            <button type="button" @click="deleteChurch(church.id)" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-300 bg-red-50 text-red-700 transition hover:bg-red-100" title="Hapus">
+                              <i class="fa-solid fa-trash text-xs"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    </template>
+                    <tr x-show="paginatedChurches.length === 0">
+                      <td colspan="8" class="px-4 py-8 text-center text-sm text-slate-500">Data tidak ditemukan.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-4 py-3 text-sm">
+                <p class="text-slate-500">Menampilkan <span class="font-semibold text-gbiBlue" x-text="paginatedChurches.length"></span> dari <span class="font-semibold text-gbiBlue" x-text="filteredChurches.length"></span> data.</p>
+                <div class="flex items-center gap-2">
+                  <button type="button" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40" :disabled="page <= 1" @click="goPrev()">
+                    <i class="fa-solid fa-chevron-left text-xs"></i>
+                  </button>
+                  <span class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">Halaman <span x-text="page"></span> / <span x-text="totalPages"></span></span>
+                  <button type="button" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40" :disabled="page >= totalPages" @click="goNext()">
+                    <i class="fa-solid fa-chevron-right text-xs"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section x-show="activePage === 'gis'" class="space-y-4">
+            <div class="grid gap-4 xl:grid-cols-[360px_1fr]">
+              <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <h3 class="text-base font-bold text-gbiBlue">Pencocokan Titik Koordinat Gereja</h3>
+                <p class="mt-1 text-sm text-slate-500">Alur: filter provinsi, pilih titik di peta, cari gereja terdaftar, lalu cocokkan koordinat.</p>
+                <div class="mt-4 space-y-3">
+                  <div>
+                    <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Filter Provinsi</label>
+                    <select x-model="gisProvince" @change="applyGisProvinceFilter()" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20">
+                      <option value="">Semua Provinsi</option>
+                      <template x-for="province in provinceOptions" :key="province">
+                        <option :value="province" x-text="province"></option>
+                      </template>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Pilih Gereja Terdaftar</label>
+                    <select x-model="selectedChurchId" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20">
+                      <option value="">-- Pilih Gereja --</option>
+                      <template x-for="church in gisProvinceFilteredChurches" :key="church.id">
+                        <option :value="church.id" x-text="church.nama + ' - ' + church.alamat"></option>
+                      </template>
+                    </select>
+                  </div>
+                  <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                    <p class="font-semibold text-slate-700">Titik terpilih:</p>
+                    <p x-show="selectedPoint" x-text="selectedPoint ? selectedPoint.lat + ', ' + selectedPoint.lng : '-'"></p>
+                    <p x-show="!selectedPoint">Belum ada titik dipilih.</p>
+                    <div x-show="selectedChurchForGis" class="mt-2 space-y-1 border-t border-slate-200 pt-2">
+                      <p><span class="font-semibold text-slate-700">Gembala:</span> <span x-text="selectedChurchForGis ? selectedChurchForGis.gembala : '-'"></span></p>
+                      <p><span class="font-semibold text-slate-700">Provinsi:</span> <span x-text="selectedChurchForGis ? selectedChurchForGis.provinsi : '-'"></span></p>
+                      <p><span class="font-semibold text-slate-700">Alamat Lengkap:</span> <span x-text="selectedChurchForGis ? selectedChurchForGis.alamat : '-'"></span></p>
+                      <p><span class="font-semibold text-slate-700">Telepon:</span> <span x-text="selectedChurchForGis ? selectedChurchForGis.telepon : '-'"></span></p>
+                    </div>
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    <button type="button" @click="matchChurchToPoint()" class="inline-flex items-center gap-2 rounded-lg bg-gbiBlue px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-800">
+                      <i class="fa-solid fa-location-dot"></i>
+                      Cocokkan Titik
+                    </button>
+                    <button type="button" @click="focusSelectedChurch()" class="inline-flex items-center gap-2 rounded-lg border border-gbiGold/40 bg-gbiGold/10 px-3 py-2 text-sm font-semibold text-gbiBlue transition hover:bg-gbiGold/20">
+                      <i class="fa-solid fa-map-pin"></i>
+                      Fokus Gereja
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                <div x-ref="map" class="h-[520px] w-full"></div>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </template>
+
+    <div x-show="modalOpen" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+      <div @click.outside="closeModal()" class="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-lg font-bold text-gbiBlue" x-text="modalMode === 'create' ? 'Tambah Data Gereja' : 'Edit Data Gereja'"></h3>
+          <button type="button" @click="closeModal()" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 text-slate-500 transition hover:bg-slate-100">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <form class="space-y-3" @submit.prevent="saveChurch()">
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+              <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Nama Gereja *</label>
+              <input x-model.trim="form.nama" type="text" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20" required>
+            </div>
+            <div>
+              <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Provinsi *</label>
+              <input x-model.trim="form.provinsi" type="text" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20" required>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Alamat *</label>
+              <textarea x-model.trim="form.alamat" rows="2" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20" required></textarea>
+            </div>
+            <div>
+              <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Gembala *</label>
+              <input x-model.trim="form.gembala" type="text" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20" required>
+            </div>
+            <div>
+              <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Telepon *</label>
+              <input x-model.trim="form.telepon" type="text" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20" required>
+            </div>
+            <div>
+              <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Latitude</label>
+              <input x-model="form.latitude" type="number" step="0.000001" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20" placeholder="-6.123456">
+            </div>
+            <div>
+              <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Longitude</label>
+              <input x-model="form.longitude" type="number" step="0.000001" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-gbiBlue focus:ring-2 focus:ring-gbiBlue/20" placeholder="106.123456">
+            </div>
+          </div>
+          <div class="mt-4 flex justify-end gap-2">
+            <button type="button" @click="closeModal()" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">Batal</button>
+            <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-gbiBlue px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-800">
+              <i class="fa-solid fa-floppy-disk"></i>
+              Simpan
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <footer class="mt-8 border-t border-slate-200 bg-white/90 py-6 text-center text-sm text-slate-600">
+      <div class="mx-auto flex w-full max-w-7xl flex-col items-center gap-3 px-4">
+        <div class="flex flex-wrap items-center justify-center gap-4">
+          <a href="#" class="transition hover:text-gbiBlue">Disclaimer</a>
+          <a href="#" class="transition hover:text-gbiBlue">Privacy Policy</a>
+          <a href="#" class="transition hover:text-gbiBlue">FAQ</a>
+        </div>
+        <p class="text-xs text-slate-500">
+          Didukung oleh
+          <a href="https://bahtraku.org/" target="_blank" rel="noopener noreferrer" class="font-semibold text-gbiBlue underline decoration-gbiGold/60 underline-offset-2 transition hover:text-blue-800">
+            Bahtraku
+          </a>
+        </p>
+      </div>
+    </footer>
+  </div>
+
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('gbiApp', () => ({
+        storageKey: 'gbiChurchData',
+        isAuthenticated: false,
+        activePage: 'dashboard',
+        search: '',
+        gisProvince: '',
+        authPage: 'utama',
+        authTab: 'masuk',
+        coordinatePrecision: 8,
+        page: 1,
+        perPage: 5,
+        userFullName: 'Admin Master GBI',
+        userMenuOpen: false,
+        loginForm: {
+          username: '',
+          password: ''
+        },
+        googleSimulasi: {
+          akunDipilih: ''
+        },
+        duaLangkah: {
+          step: 1,
+          email: '',
+          password: '',
+          kode: ''
+        },
+        kodeDuaLangkahDemo: '246810',
+        registrationForm: {
+          namaLengkap: '',
+          email: '',
+          telepon: '',
+          kataSandi: '',
+          konfirmasiKataSandi: ''
+        },
+        alert: {
+          show: false,
+          type: 'info',
+          message: ''
+        },
+        churches: [],
+        modalOpen: false,
+        modalMode: 'create',
+        form: {
+          id: null,
+          nama: '',
+          provinsi: '',
+          alamat: '',
+          gembala: '',
+          telepon: '',
+          latitude: '',
+          longitude: ''
+        },
+        dashboardMap: null,
+        dashboardMarkersLayer: null,
+        map: null,
+        markersLayer: null,
+        tempPointMarker: null,
+        selectedPoint: null,
+        selectedChurchId: '',
+        alertTimeout: null,
+
+        async init() {
+          await this.loadChurches();
+        },
+
+        async loadChurches() {
+          try {
+            const response = await fetch('./data/gereja.json');
+            if (!response.ok) {
+              throw new Error('Gagal memuat data JSON');
+            }
+            const seedData = (await response.json()).map((item) => this.normalizeChurch(item));
+            const stored = localStorage.getItem(this.storageKey);
+            if (!stored) {
+              this.churches = seedData;
+              this.saveToStorage();
+              return;
+            }
+
+            const storedData = JSON.parse(stored).map((item) => this.normalizeChurch(item));
+            const mergedMap = new Map(seedData.map((item) => [item.id, item]));
+            storedData.forEach((item) => {
+              const base = mergedMap.get(item.id) || {};
+              mergedMap.set(item.id, {
+                ...base,
+                ...item,
+                latitude: item.latitude ?? base.latitude ?? null,
+                longitude: item.longitude ?? base.longitude ?? null
+              });
+            });
+            this.churches = Array.from(mergedMap.values()).sort((a, b) => a.id - b.id);
+            this.saveToStorage();
+          } catch (error) {
+            const stored = localStorage.getItem(this.storageKey);
+            if (stored) {
+              this.churches = JSON.parse(stored).map((item) => this.normalizeChurch(item));
+            } else {
+              this.churches = this.fallbackChurches();
+            }
+            this.saveToStorage();
+            this.showAlert('warning', 'Data JSON tidak terbaca, sistem memakai data cadangan.');
+          }
+        },
+
+        fallbackChurches() {
+          return [
+            { id: 1, nama: 'GBI Bethel Sion', provinsi: 'DKI Jakarta', alamat: 'Jl. Sam Ratulangi No. 12, Jakarta Pusat', gembala: 'Pdt. Andreas Wijaya', telepon: '021-555001', latitude: -6.187483, longitude: 106.820114 },
+            { id: 2, nama: 'GBI Kemuliaan Kasih', provinsi: 'Jawa Barat', alamat: 'Jl. Braga No. 55, Bandung', gembala: 'Pdt. Samuel Halim', telepon: '022-555002', latitude: -6.917495, longitude: 107.619125 },
+            { id: 3, nama: 'GBI Shalom Damai', provinsi: 'Jawa Tengah', alamat: 'Jl. Pandanaran No. 23, Semarang', gembala: 'Pdt. Yohanes Kurnia', telepon: '024-555003', latitude: -6.992352, longitude: 110.420288 },
+            { id: 4, nama: 'GBI Sumber Berkat', provinsi: 'Jawa Timur', alamat: 'Jl. Basuki Rahmat No. 74, Surabaya', gembala: 'Pdt. Daniel Hartono', telepon: '031-555004', latitude: -7.257472, longitude: 112.75209 },
+            { id: 5, nama: 'GBI Gloria Nusantara', provinsi: 'Sulawesi Selatan', alamat: 'Jl. Penghibur No. 11, Makassar', gembala: 'Pdt. Ruben Simanjuntak', telepon: '0411-555005', latitude: -5.147665, longitude: 119.432732 },
+            { id: 6, nama: 'GBI Rock Jayapura', provinsi: 'Papua', alamat: 'Jl. Kelapa Dua, Entrop, Distrik Jayapura Selatan, Kota Jayapura', gembala: '-', telepon: '-', latitude: -2.5867, longitude: 140.6634 },
+            { id: 7, nama: 'GBI Dock 4 (Bucend VII)', provinsi: 'Papua', alamat: 'Jl. Rumsram Bucend VII, Entrop, Distrik Jayapura Selatan, Kota Jayapura', gembala: '-', telepon: '-', latitude: -2.5889, longitude: 140.6668 },
+            { id: 8, nama: 'GBI Blessing Papua Ministry (BPM)', provinsi: 'Papua', alamat: 'Ardipura, Distrik Jayapura Selatan, Kota Jayapura', gembala: '-', telepon: '-', latitude: -2.5938, longitude: 140.6699 },
+            { id: 9, nama: 'GBI Rock Sentani', provinsi: 'Papua', alamat: 'Sentani Kota, Kec. Sentani, Kabupaten Jayapura', gembala: '-', telepon: '-', latitude: -2.5683, longitude: 140.5124 },
+            { id: 10, nama: 'GBI Kristus Gembala', provinsi: 'Papua', alamat: 'Kota Baru, Kec. Abepura, Kota Jayapura', gembala: '-', telepon: '-', latitude: -2.6207, longitude: 140.6705 }
+          ];
+        },
+
+        normalizeChurch(item) {
+          const lat = item.latitude === '' || item.latitude === null || item.latitude === undefined ? null : Number(item.latitude);
+          const lng = item.longitude === '' || item.longitude === null || item.longitude === undefined ? null : Number(item.longitude);
+          return {
+            id: Number(item.id),
+            nama: item.nama || '',
+            provinsi: item.provinsi || 'Tidak diketahui',
+            alamat: item.alamat || '',
+            gembala: item.gembala || '',
+            telepon: item.telepon || '',
+            latitude: Number.isFinite(lat) ? Number(lat.toFixed(this.coordinatePrecision)) : null,
+            longitude: Number.isFinite(lng) ? Number(lng.toFixed(this.coordinatePrecision)) : null
+          };
+        },
+
+        saveToStorage() {
+          localStorage.setItem(this.storageKey, JSON.stringify(this.churches));
+        },
+
+        formatNamaDariAkun(akun) {
+          const bagianNama = (akun || '').split('@')[0] || '';
+          const kata = bagianNama.replace(/[._-]/g, ' ').split(' ').filter(Boolean);
+          if (kata.length === 0) return 'Pengguna';
+          return kata.map((item) => item.charAt(0).toUpperCase() + item.slice(1)).join(' ');
+        },
+
+        kembaliKeAutentikasiUtama() {
+          this.authPage = 'utama';
+          this.authTab = 'masuk';
+          this.resetSimulasiGoogle();
+          this.resetAutentikasiDuaLangkah();
+        },
+
+        bukaHalamanSimulasiGoogle() {
+          this.authPage = 'google';
+          this.resetSimulasiGoogle();
+        },
+
+        resetSimulasiGoogle() {
+          this.googleSimulasi = {
+            akunDipilih: ''
+          };
+        },
+
+        prosesGoogleSimulasi() {
+          if (!this.googleSimulasi.akunDipilih) {
+            this.showAlert('warning', 'Silakan pilih akun Google terlebih dahulu.');
+            return;
+          }
+          const namaPengguna = this.formatNamaDariAkun(this.googleSimulasi.akunDipilih);
+          this.loginForm.username = this.googleSimulasi.akunDipilih;
+          this.jalankanSimulasiMasuk('Masuk simulasi dengan Google berhasil.', namaPengguna);
+        },
+
+        bukaHalamanAutentikasiDuaLangkah() {
+          this.authPage = 'duaLangkah';
+          this.resetAutentikasiDuaLangkah();
+        },
+
+        resetAutentikasiDuaLangkah() {
+          this.duaLangkah = {
+            step: 1,
+            email: '',
+            password: '',
+            kode: ''
+          };
+        },
+
+        lanjutkanLangkahPertamaDuaLangkah() {
+          if (!this.duaLangkah.email || !this.duaLangkah.password) {
+            this.showAlert('warning', 'Email dan kata sandi wajib diisi untuk lanjut.');
+            return;
+          }
+          this.duaLangkah.step = 2;
+          this.duaLangkah.kode = '';
+          this.showAlert('info', `Kode verifikasi simulasi telah dikirim. Gunakan kode ${this.kodeDuaLangkahDemo}.`);
+        },
+
+        kembaliKeLangkahPertamaDuaLangkah() {
+          this.duaLangkah.step = 1;
+          this.duaLangkah.kode = '';
+        },
+
+        verifikasiAutentikasiDuaLangkah() {
+          if (!this.duaLangkah.kode) {
+            this.showAlert('warning', 'Masukkan kode verifikasi terlebih dahulu.');
+            return;
+          }
+          if (this.duaLangkah.kode.trim() !== this.kodeDuaLangkahDemo) {
+            this.showAlert('danger', 'Kode verifikasi tidak valid.');
+            return;
+          }
+          const namaPengguna = this.formatNamaDariAkun(this.duaLangkah.email) || 'Pengguna 2 Langkah';
+          this.loginForm.username = this.duaLangkah.email.trim();
+          this.jalankanSimulasiMasuk('Masuk simulasi dengan autentikasi 2 langkah berhasil.', namaPengguna);
+        },
+
+        jalankanSimulasiMasuk(pesanSukses, namaPengguna) {
+          this.isAuthenticated = true;
+          this.userMenuOpen = false;
+          this.authPage = 'utama';
+          this.authTab = 'masuk';
+          this.resetSimulasiGoogle();
+          this.resetAutentikasiDuaLangkah();
+          if (namaPengguna && namaPengguna.trim()) {
+            this.userFullName = namaPengguna.trim();
+          }
+          this.changePage('dashboard');
+          this.loginForm.password = '';
+          this.$nextTick(() => {
+            this.initDashboardMap();
+            if (this.dashboardMap) {
+              this.dashboardMap.invalidateSize();
+            }
+            this.renderDashboardMarkers();
+          });
+          this.showAlert('success', pesanSukses);
+        },
+
+        login() {
+          const namaMasuk = this.loginForm.username?.trim() || 'Admin Master GBI';
+          this.jalankanSimulasiMasuk('Masuk simulasi berhasil.', namaMasuk);
+        },
+
+        resetFormPendaftaran() {
+          this.registrationForm = {
+            namaLengkap: '',
+            email: '',
+            telepon: '',
+            kataSandi: '',
+            konfirmasiKataSandi: ''
+          };
+        },
+
+        daftarAkun() {
+          const data = this.registrationForm;
+          if (!data.namaLengkap || !data.email || !data.telepon || !data.kataSandi || !data.konfirmasiKataSandi) {
+            this.showAlert('warning', 'Semua data pendaftaran wajib diisi.');
+            return;
+          }
+          if (data.kataSandi !== data.konfirmasiKataSandi) {
+            this.showAlert('danger', 'Konfirmasi kata sandi tidak sama.');
+            return;
+          }
+          this.loginForm.username = data.email.trim();
+          this.loginForm.password = '';
+          this.userFullName = data.namaLengkap.trim();
+          this.resetFormPendaftaran();
+          this.authPage = 'utama';
+          this.authTab = 'masuk';
+          this.resetSimulasiGoogle();
+          this.resetAutentikasiDuaLangkah();
+          this.showAlert('success', 'Pendaftaran simulasi berhasil. Silakan masuk.');
+        },
+
+        logout() {
+          this.isAuthenticated = false;
+          this.userMenuOpen = false;
+          this.authPage = 'utama';
+          this.authTab = 'masuk';
+          this.resetSimulasiGoogle();
+          this.resetAutentikasiDuaLangkah();
+          this.activePage = 'dashboard';
+          this.showAlert('info', 'Anda telah keluar dari sistem.');
+        },
+
+        changePage(pageName) {
+          this.activePage = pageName;
+          if (pageName === 'dashboard') {
+            this.$nextTick(() => {
+              this.initDashboardMap();
+              if (this.dashboardMap) {
+                this.dashboardMap.invalidateSize();
+              }
+              this.renderDashboardMarkers();
+            });
+          }
+          if (pageName === 'gis') {
+            this.$nextTick(() => {
+              this.initMap();
+              if (this.map) {
+                this.map.invalidateSize();
+              }
+              this.renderMapMarkers();
+            });
+          }
+        },
+
+        showAlert(type, message) {
+          this.alert = { show: true, type, message };
+          if (this.alertTimeout) {
+            clearTimeout(this.alertTimeout);
+          }
+          this.alertTimeout = setTimeout(() => {
+            this.alert.show = false;
+          }, 3200);
+        },
+
+        alertClass() {
+          if (this.alert.type === 'success') return 'alert-success';
+          if (this.alert.type === 'danger') return 'alert-danger';
+          if (this.alert.type === 'warning') return 'alert-warning';
+          return 'alert-info';
+        },
+
+        get churchesWithCoordinatesCount() {
+          return this.churches.filter((church) => church.latitude !== null && church.longitude !== null).length;
+        },
+
+        get churchesWithoutCoordinatesCount() {
+          return this.churches.length - this.churchesWithCoordinatesCount;
+        },
+
+        get filteredChurches() {
+          const keyword = this.search.toLowerCase().trim();
+          if (!keyword) return this.churches;
+          return this.churches.filter((church) =>
+            church.nama.toLowerCase().includes(keyword) ||
+            church.alamat.toLowerCase().includes(keyword) ||
+            church.provinsi.toLowerCase().includes(keyword) ||
+            church.gembala.toLowerCase().includes(keyword)
+          );
+        },
+
+        get provinceOptions() {
+          return [...new Set(this.churches.map((church) => church.provinsi).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+        },
+
+        get provinceStats() {
+          const counts = this.churches.reduce((accumulator, church) => {
+            const province = church.provinsi || 'Tidak diketahui';
+            accumulator[province] = (accumulator[province] || 0) + 1;
+            return accumulator;
+          }, {});
+          return Object.entries(counts)
+            .map(([provinsi, total]) => ({ provinsi, total }))
+            .sort((a, b) => a.provinsi.localeCompare(b.provinsi));
+        },
+
+        get gisProvinceFilteredChurches() {
+          if (!this.gisProvince) return this.churches;
+          return this.churches.filter((church) => church.provinsi === this.gisProvince);
+        },
+
+        get totalPages() {
+          return Math.max(1, Math.ceil(this.filteredChurches.length / this.perPage));
+        },
+
+        get paginatedChurches() {
+          const start = (this.page - 1) * this.perPage;
+          return this.filteredChurches.slice(start, start + this.perPage);
+        },
+
+
+        get selectedChurchForGis() {
+          if (!this.selectedChurchId) return null;
+          const selectedId = Number(this.selectedChurchId);
+          return this.churches.find((church) => church.id === selectedId) || null;
+        },
+
+        goPrev() {
+          if (this.page > 1) this.page -= 1;
+        },
+
+        goNext() {
+          if (this.page < this.totalPages) this.page += 1;
+        },
+
+        openCreateModal() {
+          this.modalMode = 'create';
+          this.form = {
+            id: null,
+            nama: '',
+            provinsi: '',
+            alamat: '',
+            gembala: '',
+            telepon: '',
+            latitude: '',
+            longitude: ''
+          };
+          this.modalOpen = true;
+        },
+
+        openEditModal(church) {
+          this.modalMode = 'edit';
+          this.form = {
+            id: church.id,
+            nama: church.nama,
+            provinsi: church.provinsi,
+            alamat: church.alamat,
+            gembala: church.gembala,
+            telepon: church.telepon,
+            latitude: church.latitude ?? '',
+            longitude: church.longitude ?? ''
+          };
+          this.modalOpen = true;
+        },
+
+        closeModal() {
+          this.modalOpen = false;
+        },
+
+        parseCoordinate(value) {
+          if (value === '' || value === null || value === undefined) return null;
+          const number = Number(value);
+          return Number.isFinite(number) ? Number(number.toFixed(this.coordinatePrecision)) : null;
+        },
+
+        saveChurch() {
+          if (!this.form.nama || !this.form.provinsi || !this.form.alamat || !this.form.gembala || !this.form.telepon) {
+            this.showAlert('warning', 'Lengkapi semua field wajib sebelum menyimpan data.');
+            return;
+          }
+
+          const payload = {
+            id: this.form.id ? Number(this.form.id) : this.generateNextId(),
+            nama: this.form.nama,
+            provinsi: this.form.provinsi,
+            alamat: this.form.alamat,
+            gembala: this.form.gembala,
+            telepon: this.form.telepon,
+            latitude: this.parseCoordinate(this.form.latitude),
+            longitude: this.parseCoordinate(this.form.longitude)
+          };
+
+          if (this.modalMode === 'edit') {
+            const index = this.churches.findIndex((church) => church.id === payload.id);
+            if (index !== -1) {
+              this.churches[index] = payload;
+            }
+            this.showAlert('success', 'Data gereja berhasil diperbarui.');
+          } else {
+            this.churches.unshift(payload);
+            this.page = 1;
+            this.showAlert('success', 'Data gereja baru berhasil ditambahkan.');
+          }
+
+          this.saveToStorage();
+          this.closeModal();
+          this.refreshMaps();
+        },
+
+        deleteChurch(id) {
+          const confirmed = window.confirm('Hapus data gereja ini?');
+          if (!confirmed) return;
+          this.churches = this.churches.filter((church) => church.id !== id);
+          if (this.page > this.totalPages) {
+            this.page = this.totalPages;
+          }
+          this.saveToStorage();
+          this.refreshMaps();
+          this.showAlert('warning', 'Data gereja berhasil dihapus.');
+        },
+
+        generateNextId() {
+          const ids = this.churches.map((church) => Number(church.id));
+          return ids.length ? Math.max(...ids) + 1 : 1;
+        },
+
+        formatCoordinate(church) {
+          if (church.latitude === null || church.longitude === null) return 'Belum ditentukan';
+          return `${Number(church.latitude).toFixed(6)}, ${Number(church.longitude).toFixed(6)}`;
+        },
+
+        applyGisProvinceFilter() {
+          this.selectedChurchId = '';
+          this.renderMapMarkers();
+        },
+
+        refreshMaps() {
+          this.renderDashboardMarkers();
+          this.renderMapMarkers();
+        },
+
+        initDashboardMap() {
+          if (this.dashboardMap) return;
+          if (!this.$refs.dashboardMap) return;
+          this.dashboardMap = L.map(this.$refs.dashboardMap, {
+            zoomAnimation: false,
+            markerZoomAnimation: false,
+            preferCanvas: true
+          }).setView([-2.548926, 118.014863], 5);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+          }).addTo(this.dashboardMap);
+          this.dashboardMarkersLayer = L.layerGroup().addTo(this.dashboardMap);
+          this.renderDashboardMarkers();
+          setTimeout(() => {
+            if (this.dashboardMap) {
+              this.dashboardMap.invalidateSize();
+            }
+          }, 80);
+        },
+
+        renderDashboardMarkers() {
+          if (!this.dashboardMarkersLayer) return;
+          this.dashboardMarkersLayer.clearLayers();
+          this.churches.forEach((church) => {
+            if (church.latitude === null || church.longitude === null) return;
+            L.marker([church.latitude, church.longitude])
+              .addTo(this.dashboardMarkersLayer)
+              .bindPopup(`
+                <strong>${church.nama}</strong><br>
+                Gembala: ${church.gembala}<br>
+                Provinsi: ${church.provinsi}<br>
+                Alamat Lengkap: ${church.alamat}<br>
+                Telepon: ${church.telepon}
+              `);
+          });
+        },
+
+        initMap() {
+          if (this.map) return;
+          this.map = L.map(this.$refs.map, {
+            zoomAnimation: false,
+            markerZoomAnimation: false,
+            preferCanvas: true
+          }).setView([-2.548926, 118.014863], 5);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+          }).addTo(this.map);
+
+          this.markersLayer = L.layerGroup().addTo(this.map);
+          this.renderMapMarkers();
+
+          this.map.on('click', (event) => {
+            const lat = Number(event.latlng.lat.toFixed(this.coordinatePrecision));
+            const lng = Number(event.latlng.lng.toFixed(this.coordinatePrecision));
+            this.selectedPoint = { lat, lng };
+
+            if (this.tempPointMarker) {
+              this.tempPointMarker.setLatLng(event.latlng);
+            } else {
+              this.tempPointMarker = L.marker(event.latlng).addTo(this.map);
+            }
+            this.tempPointMarker.bindPopup(`Titik dipilih: ${lat.toFixed(6)}, ${lng.toFixed(6)}`).openPopup();
+          });
+        },
+
+        renderMapMarkers() {
+          if (!this.markersLayer) return;
+          this.markersLayer.clearLayers();
+          this.gisProvinceFilteredChurches.forEach((church) => {
+            if (church.latitude === null || church.longitude === null) return;
+            L.marker([church.latitude, church.longitude])
+              .addTo(this.markersLayer)
+              .bindPopup(`
+                <strong>${church.nama}</strong><br>
+                Gembala: ${church.gembala}<br>
+                Provinsi: ${church.provinsi}<br>
+                Alamat Lengkap: ${church.alamat}<br>
+                Telepon: ${church.telepon}
+              `);
+          });
+        },
+
+        matchChurchToPoint() {
+          if (!this.selectedPoint) {
+            this.showAlert('warning', 'Pilih titik koordinat terlebih dahulu dengan klik pada peta.');
+            return;
+          }
+          if (!this.selectedChurchId) {
+            this.showAlert('warning', 'Pilih gereja terdaftar yang ingin dicocokkan.');
+            return;
+          }
+          const selectedId = Number(this.selectedChurchId);
+          const church = this.churches.find((item) => item.id === selectedId);
+          if (!church) {
+            this.showAlert('danger', 'Data gereja tidak ditemukan.');
+            return;
+          }
+
+          church.latitude = this.selectedPoint.lat;
+          church.longitude = this.selectedPoint.lng;
+          this.saveToStorage();
+          this.refreshMaps();
+          this.showAlert('success', `Koordinat untuk ${church.nama} berhasil dicocokkan.`);
+        },
+
+        focusSelectedChurch() {
+          if (!this.selectedChurchId) {
+            this.showAlert('warning', 'Pilih gereja terlebih dahulu untuk difokuskan di peta.');
+            return;
+          }
+          const selectedId = Number(this.selectedChurchId);
+          const church = this.churches.find((item) => item.id === selectedId);
+          if (!church || church.latitude === null || church.longitude === null) {
+            this.showAlert('warning', 'Gereja belum memiliki koordinat. Cocokkan titik terlebih dahulu.');
+            return;
+          }
+          this.map.setView([church.latitude, church.longitude], 14);
+        }
+      }));
+    });
+  </script>
+</body>
+</html>
